@@ -169,16 +169,13 @@ API BOOL WINAPI Ellipse(HDC,int,int,int,int);
 API int WINAPI SetBkMode(HDC, int);
 API DWORD WINAPI SetTextColor(HDC,DWORD);
 API BOOL WINAPI TextOutA(HDC,int,int,const,char*,int);
-API
-API
-API
-API
-API
-API
-API
-API
-API
-API
-API
+API HFONT WINAPI CreateFontA(int,int,int,int,int,DWORD,DWORD,DWORD,DWORD,DWORD,DWORD,DWORD,DWORD, const char*);
+API BOOL WINAPI BitBlt(HDC, int,int,int,int,HDC,int,int,DWORD);
+API BOOL WINAPI PlaySoundA(const char*, HINSTANCE, DWORD);
+API BOOL WINAPI ClientToScreen(HWND,POINT*)
+API BOOL WINAPI AdjustWindowRectEx(RECT*, DWORD,BOOL,DWORD);
+API unsigned long long WINAPI SetTimer(HWND, unsigned long, long, UINT, void*);
+API BOOL WINAPI KillTimer(HWND,unsigned long long);
+
 
 #endif
