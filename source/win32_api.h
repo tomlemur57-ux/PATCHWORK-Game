@@ -177,6 +177,14 @@ API BOOL WINAPI ClientToScreen(HWND, POINT*);
 API BOOL WINAPI AdjustWindowRectEx(RECT*, DWORD,BOOL,DWORD);
 API unsigned long long WINAPI SetTimer(HWND, unsigned long, long, UINT, void*);
 API BOOL WINAPI KillTimer(HWND,unsigned long long);
-
-
+#define WS_CAPTION      0x00c00000ul
+#define WS_SYSMENU      0x00080000ul
+#define WS_MINIMIZEBOX  0x00020000ul
+#define WS_EX_APPWINDOW 0x00040000ul
+#define WM_MOVE 3
+#define WM_TIMER 275
+#define WM_ENTERSIZEMOVE 561
+#define WM_EXITSIZEMOVE 562
+#define WM_DESTROY 2
+#define WM_SIZE 5
 #endif
