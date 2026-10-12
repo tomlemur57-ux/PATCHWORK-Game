@@ -187,4 +187,17 @@ API BOOL WINAPI KillTimer(HWND,unsigned long long);
 #define WM_EXITSIZEMOVE 562
 #define WM_DESTROY 2
 #define WM_SIZE 5
+#define WM_PAINT 15
+#define WM_CLOSE 16
+#define WM_QUIT 18
+#define WM_ERASEBKGND 20
+#define WM_KEYDOWN 256
+#define WM_SYSKEYDOWN 260
+#define WM_LBUTTONDOWN 513
+#define WM_LBUTTONUP 514
+#define WM_MBUTTONDOWN 519
+#define WM_BUTTONUP 520
+#define WM_CAPTURECHANGED 533
+#define WS_POPUP   0x80000000ul
+#define WS_VISIBLE 0x10000000ul
 #endif
