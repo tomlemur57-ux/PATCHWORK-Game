@@ -166,9 +166,9 @@ API HPEN WINAPI CreatePen(int,int,DWORD);
 API BOOL WINAPI MoveToEx(HDC,int, int, POINT*);
 API BOOL WINAPI LineTo(HDC,int,int);
 API BOOL WINAPI Ellipse(HDC,int,int,int,int);
-API
-API
-API
+API int WINAPI SetBkMode(HDC, int);
+API DWORD WINAPI SetTextColor(HDC,DWORD);
+API BOOL WINAPI TextOutA(HDC,int,int,const,char*,int);
 API
 API
 API
