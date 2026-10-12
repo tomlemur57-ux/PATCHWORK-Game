@@ -49,7 +49,7 @@ typedef struct{
     DWORD private_field;
 } MSG;
 typedef struct{
-    HDC hdf;
+    HDC hdc;
     BOOL erase;
     RECT paint;
     BOOL restore, update;
