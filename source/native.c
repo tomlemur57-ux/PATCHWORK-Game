@@ -28,6 +28,9 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         fill(dc,0,266,432,22,0x47676c);
         SetBkMode(dc,1);SetTextColor(dc,0x413917);
         TextOutA(dc,18,20,"Move this window by its Windows title bar.",42);
+        if(actor_room==n) {
+            fill(dc,(int)x-10,(int)y-14,20,28,0xe66b4a);
+        }
         EndPaint(hwnd,&ps);return 0;
     }
     return DefWindowProcA(hwnd,msg,wp,lp);
