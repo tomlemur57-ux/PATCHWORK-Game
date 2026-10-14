@@ -62,6 +62,7 @@ void mainCRTStartup(void){
             if(message.message==WM_QUIT){running=0;break;}
             TranslateMessage(&message);DispatchMessageA(&message);
         }
+        frame();
         Sleep(8);
     }
     for (i=0;i<2;i++)DestroyWindow(rooms[i]);
