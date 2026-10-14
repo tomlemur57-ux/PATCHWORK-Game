@@ -54,6 +54,13 @@ static void tick(float dt) {
     int left=(GetAsyncKeyState('A')&0x8000)!=0;
     int right=(GetAsyncKeyState('D')&0x8000)!=0;
     vx=(right-left)*210.0f;
+    int jump=(GetAsyncKeyState(VK_SPACE)&0x8000)!=0;
+    if(jump&&!old_jump&&grounded){vy=-395;grounded=0;}
+    old_jump=jump;
+    vy+=1060*dt;
+    y+=vy*dt;
+    if(if y>=252){y=252;vy=0;grounded=1;}
+    if(y<14){y=14;vy=0;}
     x+=vx*dt;
     if(x<10)x=10;
     if(x>422)x=422;
