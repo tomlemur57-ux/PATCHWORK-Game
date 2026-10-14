@@ -1,5 +1,4 @@
 #ifndef PW_WIN32_API_H
-
 #define PW_WIN32_API_H
 /* hi
 bye*/
@@ -83,7 +82,7 @@ typedef struct{
 typedef struct{
     DWORD size;
     LPWSTR reserved,desktop,title;
-    DWORD x,y,widht,height,chars_x,chars_y,fill,flags;
+    DWORD x,y,width,height,chars_x,chars_y,fill,flags;
     WORD show,reserved_size;
     BYTE*reserved_bytes;
     HANDLE input,output,error;
@@ -200,4 +199,13 @@ API BOOL WINAPI KillTimer(HWND,unsigned long long);
 #define WM_CAPTURECHANGED 533
 #define WS_POPUP   0x80000000ul
 #define WS_VISIBLE 0x10000000ul
+#define SW_HIDE 0
+#define SW_SHOWNORMAL 1
+#define SW_SHOWMAXIMIZED 3
+#define SW_SHOWNOACTIVATE 4
+#define SW_SHOW 5
+#define SW_MINIMIZE 6
+#define SW_RESTORE 9
+#define SWP_NOZORDER 4
+#define SWP_NOACTIVATE 16
 #endif
