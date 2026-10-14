@@ -12,6 +12,12 @@ static void fill(HDC dc, int x, int y, int w, int h, unsigned rgb) {
 }
 static float x=70, y=252;
 static int actor_room=0;
+static int system_move=0;
+static long long frequency,last_tick;
+static double debt=0;
+static int in_frame=0;
+static float vx=0;
+static void frame(void);
 static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     int n=hwnd==rooms[1]?1:0;
     (void)n;
@@ -27,8 +33,8 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     /*  windows enters modal loop whn title bar is dragged
     timer is there to keepo same frame frunction running during that loop*/
     if(msg==WM_ENTERSIZEMOVE){system_move=1;SetTimer(hwnd,77,8,0);return 0;}
-    if(msg==WM_TIMER&&wp=77){frame();return 0;}
-    if(msg=WM_EXITSIZEMOVE){KillTimer(hwnd,77);system_move}
+    if(msg==WM_TIMER&&wp==77){frame();return 0;}
+    if(msg==WM_EXITSIZEMOVE){KillTimer(hwnd,77);system_move=0;return 0;}
     if (msg==WM_PAINT){
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);
         fill(dc,0,0,432,288,0xe8e5d7);
