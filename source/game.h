@@ -125,5 +125,24 @@ int pw_link(const Game*g, int room, int side);
 int pw_powered(const Game*g);
 int pw_alive(const Game*g);
 int pw_board_solved(const int board[9]);
+void pw_rotate(Game*g,int room, int cell);
+void pw_interact(Game*g,int up);
+void pw_hurt(Game *g, int damage, int respawn);
+void pw_message(Game*g,const char *text);
+void pw_effect(Game*g,int room, float x, float y, unsigned color, int count);
+void pw_guide(const Game*g,char*title,char*body,int cap);
 
+enum{
+    OP_RECT,OP_LINE,OP_CIRCLE,OP_TEXT
+};
+typedef struct {
+    int kind;
+    float x,y,w,h;
+    unsigned color;
+    float width;
+    int font;
+    char text[128];
+}
+
+DrawOp;
 #endif
