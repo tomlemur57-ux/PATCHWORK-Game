@@ -92,13 +92,13 @@ typedef struct{
     DWORD pid,tid;
 } PROCESS_INFORMATION;
 API void WINAPI ExitProcess(UINT);
-API DWORD WINAPI GetCurrentProgressId(void);
+API DWORD WINAPI GetCurrentProcessId(void);
 API BOOL WINAPI QueryPerformanceCounter  (long long*);
 API BOOL WINAPI QueryPerformanceFrequency(long long*);
 API void WINAPI Sleep(DWORD);
 API DWORD WINAPI GetModuleFileNameW(HINSTANCE,LPWSTR,DWORD);
 API HINSTANCE WINAPI GetModuleHandleA(const char*);
-API char* WINAPI GetCommandLine(void);
+API char* WINAPI GetCommandLineA(void);
 API BOOL WINAPI CreateProcessW(LPCWSTR, LPWSTR, void*, void*, BOOL, DWORD, void*, LPCWSTR,STARTUPINFOW*,PROCESS_INFORMATION);
 API HANDLE WINAPI CreateEventA(SECURITY_ATTRIBUTES*, BOOL, BOOL, const char*);
 API BOOL WINAPI SetEvent(HANDLE);
@@ -208,4 +208,17 @@ API BOOL WINAPI KillTimer(HWND,unsigned long long);
 #define SW_RESTORE 9
 #define SWP_NOZORDER 4
 #define SWP_NOACTIVATE 16
+#define VK_ESCAPE 27
+#define VK_RETURN 13
+#define VK_SPACE 32
+#define VK_SHIFT 16
+#define VK_MENU 18
+#define VK_LEFT 37
+#define VK_UP 38
+#define VK_RIGHT 39
+#define VK_DOWN 40
+#define VK_LBUTTON 1
+#define VK_RBUTTON 2
+#define VK_MBUTTON 4
+#define INVALID_HANDLE_VALUE ((HANDLE)(long long)-1) 
 #endif
