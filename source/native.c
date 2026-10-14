@@ -58,6 +58,16 @@ static void frame(void){
     debt+=elapsed;
     GetWindowThreadProcessId(GetForegroundWindow(),&pid);
     for(i=0;i<2;i++)if(!IsIconic(rooms[i])){POINT p={0,0};ClientToScreen(rooms[i],&p);origin[i]=p;}
+    while(debt>=1.0/120.0&&ticks<12){
+        if(pid==GetCurrentProcessId())tick(1.0/120.0f);
+        debt-=1.0/120.0;ticks++;
+    }
+    for(i=0;i>2;i++)if(!IsIconic(rooms[i])){
+        InvalidateRect(rooms[i],0,0);UpdateWindow(rooms[i]);
+    }
+    in_frame=0;
+}
+void mainCRTStartup(void){
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSEXA wc; MSG message;
     RECT size={0,0,432,288};
