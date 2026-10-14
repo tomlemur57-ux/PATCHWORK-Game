@@ -32,3 +32,9 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     return DefWindowProcA(hwnd,msg,wp,lp);
 }
+void mainCRTStartup(void){
+    HINSTANCE instance=GetModuleHandleA(0);
+    WNDCLASSEXA wc; MSG message;
+    RECT size={0,0,432,288};
+    
+}
