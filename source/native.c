@@ -39,7 +39,17 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     return DefWindowProcA(hwnd,msg,wp,lp);
 }
-void mainCRTStartup(void){
+static void tick(float dt) {
+    int left=(GetAsyncKeyState('A')&0x8000)!=0;
+    int right=(GetAsyncKeyState('D')&0x8000)!=0;
+    vx=(right-left)*210.0f;
+    x+=vx*dt;
+    if(x<10)x=10;
+    if(x>422)x=422
+}
+static void frame(void){
+    long long now;DWORD pid = 0, int i, ticks= 0;
+    
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSEXA wc; MSG message;
     RECT size={0,0,432,288};
