@@ -45,11 +45,19 @@ static void tick(float dt) {
     vx=(right-left)*210.0f;
     x+=vx*dt;
     if(x<10)x=10;
-    if(x>422)x=422
+    if(x>422)x=422;
 }
 static void frame(void){
-    long long now;DWORD pid = 0, int i, ticks= 0;
-    
+    long long now;DWORD pid = 0; int i, ticks= 0;
+    if(in_frame||!frequency)return;
+    in_frame=1;
+    QueryPerformanceCounter(&now);
+    double elapsed=(double)(now-last_tick)/frequency;
+    last_tick=now;
+    if(elapsed>.1)elapsed=.1;
+    debt+=elapsed;
+    GetWindowThreadProcessId(GetForegroundWindow(),&pid);
+    for(i=0;i<2;i++)if(!IsIconic(rooms[i])){POINT p={0,0};ClientToScreen(rooms[i],&p);origin[i]=p;}
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSEXA wc; MSG message;
     RECT size={0,0,432,288};
