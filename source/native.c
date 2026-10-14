@@ -24,6 +24,11 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(hwnd==rooms[n]) {POINT p={0,0};ClientToScreen(hwnd,&p);origin[n]=p;}
         return 0;
     }
+    /*  windows enters modal loop whn title bar is dragged
+    timer is there to keepo same frame frunction running during that loop*/
+    if(msg==WM_ENTERSIZEMOVE){system_move=1;SetTimer(hwnd,77,8,0);return 0;}
+    if(msg==WM_TIMER&&wp=77){frame();return 0;}
+    if(msg=WM_EXITSIZEMOVE){KillTimer(hwnd,77);system_move}
     if (msg==WM_PAINT){
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);
         fill(dc,0,0,432,288,0xe8e5d7);
@@ -59,10 +64,10 @@ static void frame(void){
     GetWindowThreadProcessId(GetForegroundWindow(),&pid);
     for(i=0;i<2;i++)if(!IsIconic(rooms[i])){POINT p={0,0};ClientToScreen(rooms[i],&p);origin[i]=p;}
     while(debt>=1.0/120.0&&ticks<12){
-        if(pid==GetCurrentProcessId())tick(1.0/120.0f);
+        if(pid==GetCurrentProcessId())tick(1.0f/120.0f);
         debt-=1.0/120.0;ticks++;
     }
-    for(i=0;i>2;i++)if(!IsIconic(rooms[i])){
+    for(i=0;i<2;i++)if(!IsIconic(rooms[i])){
         InvalidateRect(rooms[i],0,0);UpdateWindow(rooms[i]);
     }
     in_frame=0;
