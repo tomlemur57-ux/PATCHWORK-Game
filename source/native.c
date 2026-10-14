@@ -34,6 +34,7 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             fill(dc,(int)x-10,(int)y-14,20,28,0xe66b4a);
             fill(dc,(int)x-6,(int)y-10,12,7,0x254b52);
         }
+        TextOutA(dc,18,46,"A / D to roll.",14);
         EndPaint(hwnd,&ps);return 0;
     }
     return DefWindowProcA(hwnd,msg,wp,lp);
@@ -57,6 +58,8 @@ void mainCRTStartup(void){
             if(!rooms[i])ExitProcess(1);
             {POINT p={0,0};ClientToScreen(rooms[i],&p);origin[i]=p;}ShowWindow(rooms[i],SW_SHOW);
     }
+    if(!QueryPerformanceFrequency(&frequency)||frequency<=0)ExitProcess(1);
+    QueryPerformanceCounter(&last_tick);
     while(running){
         while(PeekMessageA(&message,0,0,0,1)){
             if(message.message==WM_QUIT){running=0;break;}
