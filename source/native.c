@@ -19,7 +19,12 @@ static int in_frame=0;
 static float vx=0;
 static void frame(void);
 static float vy=0;
-static int grounded=1,oldjump=0;
+static int grounded=1,old_jump=0;
+static int won=0;
+static int linked(void) {
+    int dx=origin[1].x-origin[0].x,dy=origin[1].y-origin[0].y;
+    return dx>=432&&dx<=462&&dy>=-18&&dy<=18;
+}
 static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     int n=hwnd==rooms[1]?1:0;
     (void)n;
@@ -48,7 +53,10 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             fill(dc,(int)x-6,(int)y-10,12,7,0x254b52);
         }
         TextOutA(dc,18,46,"A / D to roll.",14);
-        TextOutA(dc,18,67,"Space to jump.",14)
+        TextOutA(dc,18,67,"Space to jump.",14);
+        fill(dc,n==0?425:0,201,7,65,linked()?0x14988d:0xae7756);
+        if(n==1)fill(dc,379,222,26,44,won?0xe8bb39:0x14988d);
+        if(won)TextOutA(dc,18,90,"Dock reached. Press R to restart.", 32);
         EndPaint(hwnd,&ps);return 0;
     }
     return DefWindowProcA(hwnd,msg,wp,lp);
@@ -57,14 +65,25 @@ static void tick(float dt) {
     int left=(GetAsyncKeyState('A')&0x8000)!=0;
     int right=(GetAsyncKeyState('D')&0x8000)!=0;
     vx=(right-left)*210.0f;
+    if(GetAsyncKeyState('R')&0x8000){
+        x=70;y=252;vx=vy=0;actor_room=0;won=0;
+    }
+    if(won)return;
     int jump=(GetAsyncKeyState(VK_SPACE)&0x8000)!=0;
     if(jump&&!old_jump&&grounded){vy=-395;grounded=0;}
     old_jump=jump;
     vy+=1060*dt;
     y+=vy*dt;
-    if(if y>=252){y=252;vy=0;grounded=1;}
+    if(y>=252){y=252;vy=0;grounded=1;}
     if(y<14){y=14;vy=0;}
     x+=vx*dt;
+    int dy=origin[1].y-origin[0].y;
+    float target_y=y+(actor_room==0?-dy:dy);
+    if(linked()&&y>=215&&y<=252&&target_y>=215&&target_y<=252){
+        if(actor_room==0&&x>422) {actor_room=1;x=12;y=target_y;}
+        else if(actor_room==1&&x<10){actor_room=0;x=420;y=target_y;}
+    }
+    if(actor_room==1&&x>374&&y>223)won=1;
     if(x<10)x=10;
     if(x>422)x=422;
 }
