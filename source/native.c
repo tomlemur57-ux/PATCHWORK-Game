@@ -43,9 +43,11 @@ void mainCRTStartup(void){
     wc.name="PatchworkNativeRoom";
     if(!RegisterClassExA(&wc))ExitProcess(1);
     AdjustWindowRectEx(&size,ROOM_STYLE,0,WS_EX_APPWINDOW);
-    for(i=0;i<2,i++){
+    for(i=0;i<2;i++){
         rooms[i]=CreateWindowExA(WS_EX_APPWINDOW,wc.name,
             i==0?"PATCHWORK - Service bay":"PATCHWORK - Transfer deck", ROOM_STYLE,
             origin[i].x+size.left,origin[i].y+size.top,size.right-size.left,size.bottom-size.top,
-            0,0,instance,0)
+            0,0,instance,0); /* No parent, no owner, no WS_CHILD. */
+            if(!rooms[i])ExitProcess(1);
+            {POINT p={0,0};ClientToScreen(rooms[i],&p);origin[i]=p;}ShowWindow(rooms[i],SW_SHOW);
     }
