@@ -36,5 +36,10 @@ void mainCRTStartup(void){
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSEXA wc; MSG message;
     RECT size={0,0,432,288};
-    
-}
+    int i;
+    SetProcessDpiAwarenessContext((HANDLE)(long long)-4);
+    memset(&wc,0,sizeof(wc));wc.size=sizeof(wc);wc.proc=events;
+    wc.instance=instance;wc.cursor=LoadCursorA(0,(const char*)32512);
+    wc.name="PatchworkNativeRoom";
+    if(!RegisterClassExA(&wc))ExitProcess(1);
+    AdjustWindowRectEx(&size,ROOM_STYLE,0,WS_EX_APPWINDOW);
