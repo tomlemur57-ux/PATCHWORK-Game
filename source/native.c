@@ -51,3 +51,13 @@ void mainCRTStartup(void){
             if(!rooms[i])ExitProcess(1);
             {POINT p={0,0};ClientToScreen(rooms[i],&p);origin[i]=p;}ShowWindow(rooms[i],SW_SHOW);
     }
+    while(running){
+        while(PeekMessageA(&message,0,0,0,1)){
+            if(message.message==WM_QUIT){running=0;break;}
+            TranslateMessage(&message);DispatchMessageA(&message);
+        }
+        Sleep(8);
+    }
+    for (i=0;i<2;i++)DestroyWindow(rooms[i]);
+    ExitProcess(0);
+}
