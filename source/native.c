@@ -22,3 +22,13 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(hwnd==rooms[n]) {POINT p={0,0};ClientToScreen(hwnd,&p);origin[n]=p;}
         return 0;
     }
+    if (msg=WM_PAINT){
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);
+        fill(dc,0,0,432,288,0xe8e5d7);
+        fill(dc,0,266,432,22,0x47676c);
+        SetBkMode(dc,1);SetTextColor(dc,0x413917);
+        TextOutA(dc,18,20,"Move this window by its windows title bar.",42);
+        EndPaint(hwnd,&ps);return 0;
+    }
+    return DefWindowProcA(hwnd,msg,wp,lp);
+}
