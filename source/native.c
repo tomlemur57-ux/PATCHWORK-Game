@@ -18,6 +18,8 @@ static double debt=0;
 static int in_frame=0;
 static float vx=0;
 static void frame(void);
+static float vy=0;
+static int grounded=1,oldjump=0;
 static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     int n=hwnd==rooms[1]?1:0;
     (void)n;
@@ -46,6 +48,7 @@ static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             fill(dc,(int)x-6,(int)y-10,12,7,0x254b52);
         }
         TextOutA(dc,18,46,"A / D to roll.",14);
+        TextOutA(dc,18,67,"Space to jump.",14)
         EndPaint(hwnd,&ps);return 0;
     }
     return DefWindowProcA(hwnd,msg,wp,lp);
