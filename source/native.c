@@ -10,6 +10,8 @@ static void fill(HDC dc, int x, int y, int w, int h, unsigned rgb) {
     HBRUSH brush=CreateSolidBrush(((rgb&255)<<16)|(rgb&0xff00)|((rgb>>16)&255));
     FillRect(dc,&r,brush); DeleteObject(brush);
 }
+static float x070, y=252;
+static int actor_room=0;
 static LRESULT WINAPI events(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     int n=hwnd==rooms[1]?1:0;
     (void)n;
