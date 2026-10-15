@@ -60,15 +60,18 @@ int pw_alive(const Game*g){
 
 static int pads_ready(const Game*g){
     int i;
-    for(i=0,i<g->nrooms,i++)if(g->rooms[i].has_pad&&!g->rooms[i].repaired) return 0;
+    for(i=0;i<g->nrooms;i++)if(g->rooms[i].has_pad&&!g->rooms[i].repaired) return 0;
     return 1;
 }
 
 /*build checking opposing room edges in desktop coords so that doors never open through overlapps */
-int pw_link(const Game*g, inr r, int side) {
+int pw_link(const Game*g, int r, int side) {
     int j;
     const Room*a=&g->rooms[r];
     for(j=0;j<g->nrooms;j++)if(j!=r){
-        
+        const Room*b=&g->rooms[j];
+        float dx=side>0?b->ox-(a->ox+PW_W):(a->ox-(b->ox+PW_W));
+        if(dx>=0&&dx<=PW_GAP+18&&pw_abs(a->oy-b->oy)<=18)return j;
     }
+    return -1;
 }
