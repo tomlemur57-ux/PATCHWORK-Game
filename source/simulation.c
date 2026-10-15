@@ -75,3 +75,52 @@ int pw_link(const Game*g, int r, int side) {
     }
     return -1;
 }
+
+void pw_move_room(Game*g,int r, float x, float y, int snap){
+    int j;
+    Room*a;
+    if(r<0||r>=g->nrooms)return;
+    a=&g->rooms[r];
+    if(pw_length(x-a->ox,y-a->oy)>1)g->dragged+=(int)pw_length(x-a->ox,y-a->oy);
+    a->ox=x;
+    a->oy=y;
+    if(snap)for(j=0;j<g->nrooms;j++)if(j!=r){
+        Room*b=&g->rooms[j];
+        if(pw_abs(a->oy-b->oy)<30){
+            if(pw_abs(a->ox-(b->ox+PW_W+PW_GAP))<34){
+                a->ox=b->ox+PW_W+PW_GAP;
+                a->oy-b->oy;
+                break;
+            }
+            if(pw_abs(a->ox+PW_W+PW_GAP-b->ox)<34){
+                a->ox=b->ox-PW_W-PW_GAP;
+                a->oy=b->oy;
+                break;
+            }
+        }
+    }
+}
+
+static int solids(const Game*g,int r, Box*out, int ignore){
+    const Room*room=&g->rooms[r];
+    int n=0,i;
+    for (i=0;i<room->nwalls;i++)out[n++]=room->walls[i];
+    if(room->has_gate&&!pw_powered(g))out[n++]=room->gate;
+    for(i=0;i<PW_CRATES;i++){
+        const Crate*c=&g->crates[i];
+        if(i!=ignore&&c->active&&!c->held&&c->room==r)out[n++]=body(c->x,c->y,c->w,c->h);
+    }
+    return n;
+}
+
+static int cleat_at(const Game*g,int r, float x, float y, float w, float h, int ignore){
+    Box s[40],b=body(x,y,w,h);
+    int i,n = solids(g,r,s,ignore);
+    for(i=0;i<n;i++)if(pw_overlap(b,s[i]))return 0;
+    return y-h/2>=1&&y+h/2<=PW_H;
+}
+
+/*shi to move body*/
+static void move_body(Game*g,int *r, float *x, float *y, float*vx, float *vy, float w, float h, int*ground, int ignore, float dt, int actor){
+    
+}
