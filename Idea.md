@@ -1,45 +1,29 @@
 # PATCHWORK
 
-*A puzzle game where you move the rooms, not just the robot.*
+*A puzzle game where you move the rooms(the Windwos windows), not just the robot.*
 
-Working title · Windows-first · Godot + GDScript  
-Workspace: `J:\Project2`  
-Planning draft · Updated 10 October 2026.
 
 ## The game
 
 A little maintenance robot is stranded in a broken machine. Its rooms have come apart into separate desktop windows. Drag those windows together, line up their doors, and help the robot carry a battery to the exit.
 
-The important moment: the robot walks out of one **actual window** and into another. Later, a room with sideways gravity lets you send a battery through a doorway that you could not reach before.
+The important moment: the robot walks out of one **actual window** and into another. Later, a room with sideways gravity lets you send a battery through a doorway that you could not reach before.(The game only works on Windows where you move your Windows windows)
 
-The desktop is the space between the rooms. The game controls only its own windows. It does not read personal files, move other applications, or pretend to be a Windows error.
+The desktop is the space between the rooms. The game controls only its own windows. 
 
-**The player should discover a surprising rule and then do something clever with it.** Do not turn this into a conventional platformer with unusual borders.
 
 ## What inspired it
 
 [Windowkill][1] makes moving, shrinking windows part of a shooter. [Windowframe][2] makes window boundaries part of its platforming rules. Borrow the idea that the application window can be a game object, not their levels, art, combat, or code.
 
-PATCHWORK's proposed focus is connecting little machines: moving rooms changes which places and objects can reach each other. This is a design direction, not a claim that nobody has explored connected-window puzzles before.
-
-## The first playable moment
-
-Two windows open beside each other. One contains the robot; the other contains its charging dock. Their doorways are visibly misaligned.
-
-A single instruction appears: **“Move this room until the doors line up.”**
-
-The player enters Arrange mode and drags the second window. Near the right position, the door brackets line up and the room snaps gently into place. Both doors open. Back in Run mode, the player walks across and reaches the dock.
-
-That is the first prototype. No inventory, gravity changes, level editor, or elaborate menu yet.
-
-A stranger should be able to complete it without the developer explaining what to click. If they cannot, fix the interaction before adding another room.
+The Game name is ai generated tho, not the game(ai assisted mostly)
 
 ## Rules worth keeping consistent
 
-- **Rooms have fixed dimensions initially.** Rearranging them changes their connections, not their internal geometry. Resizing is not a first-release mechanic.
+- **Rooms have fixed dimensions initially.** Rearranging them changes their connections, not their internal geometry. Resizing is not a first-release mechanic.(but i will somehow add resizing of windows later with some mechanic)
 - **Only aligned, opposing doorways connect.** Overlapping windows do not become portals. An unconnected doorway stays shut; snapping should not require pixel-perfect dragging.
 - **An object belongs to one room at a time.** Crossing preserves its motion in screen coordinates; the destination room's gravity then takes over. Moving a window does not automatically fling its contents.
-- **Arrange mode pauses the whole simulation.** Reposition rooms, then explicitly return to Run. Live dragging and catching falling objects remain experiments until the prototype proves they work reliably.
+- **Arrange mode pauses the whole simulation.** Reposition rooms, then explicitly return to Run. Live dragging and catching falling objects remain experiments until the prototype proves they work reliably. (this is because i cant get it to work when actively moving windows and the character, but i will probably fix it)
 - **A blocked destination stays blocked.** Do not transfer the robot inside a wall or duplicate a battery. Disconnecting a doorway during a crossing needs a defined safe result, not a lost object.
 
 Suggested initial controls: A/D or arrow keys to move, Space to jump, E to pick up or put down a battery, Tab to switch Arrange/Run, R to restart, Esc for the menu. Show the relevant control when it becomes useful, not a full manual at startup.
