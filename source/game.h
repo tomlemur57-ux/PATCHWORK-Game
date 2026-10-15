@@ -131,7 +131,7 @@ void pw_hurt(Game *g, int damage, int respawn);
 void pw_message(Game*g,const char *text);
 void pw_effect(Game*g,int room, float x, float y, unsigned color, int count);
 void pw_guide(const Game*g,char*title,char*body,int cap);
-
+/*hi*/
 enum{
     OP_RECT,OP_LINE,OP_CIRCLE,OP_TEXT
 };
@@ -145,4 +145,15 @@ typedef struct {
 }
 
 DrawOp;
+typedef struct {
+ int count;
+ DrawOp ops[2400];
+}
+
+Drawing;
+void pw_rect(Drawing*d,float x, float y, float w, float h, unsigned c);
+void pw_line(Drawing*d, float x, float y, float xx, float yy, unsigned c, float thickness);
+void pw_circle(Drawing*d,float x,float y, float radius, unsigned c);
+void pw_text(Drawing*d, float x, float y, int size, unsigned c, const char*text);
+void pw_render(const Game*g, int room, Drawing*d);
 #endif
