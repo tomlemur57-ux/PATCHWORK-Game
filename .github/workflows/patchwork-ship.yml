@@ -1,0 +1,44 @@
+name: PATCHWORK ship build
+on:
+  push:
+    branches: ['demo-build/**']
+permissions:
+  contents: read
+concurrency:
+  group: ship-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare hosted compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+      - name: Verify snapshot and compile saved source
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib
+          manifest=json.loads(pathlib.Path('SOURCE-SNAPSHOT.json').read_text())
+          for item in manifest['files']:
+              p=pathlib.Path(item['name'])
+              assert not p.is_absolute() and '..' not in p.parts
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==item['sha256'], str(p)
+          PY
+          python3 tools/build_portable.py
+          printf 'Commit: %s\nNative Windows x64 build of the saved source snapshot.\nGameplay still needs local playtesting.\n' "$GITHUB_SHA" > BUILD-INFO.txt
+          sha256sum PATCHWORK.exe > SHA256SUMS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PATCHWORK-Ship
+          path: |
+            PATCHWORK.exe
+            BUILD-INFO.txt
+            SHA256SUMS.txt
+            SOURCE-SNAPSHOT.json
+          if-no-files-found: error
+          retention-days: 7

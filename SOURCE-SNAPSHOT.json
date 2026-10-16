@@ -1,0 +1,15 @@
+{
+  "format": "patchwork-ship-20261016-1",
+  "sourceGitHead": "c688e13f4bc6f1d0395acc243c92e4533138873d",
+  "selection": "existing two-file base; incomplete refactor modules excluded",
+  "files": [
+    {
+      "name": "source/native.c",
+      "sha256": "28ccea0f227c8cbfd5aef01e26d057cc6cc3034089d36bfd3cc85fe0ea2c7cc3"
+    },
+    {
+      "name": "source/win32_api.h",
+      "sha256": "3c68d2e92e5d746bbde51dfc5a2ed83519a2306cbdc578f1a2eff69484ade7d9"
+    }
+  ]
+}
