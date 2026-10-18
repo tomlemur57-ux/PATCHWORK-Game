@@ -52,7 +52,7 @@ jobs:
               if binary: return result.stdout
               return json.loads(result.stdout or b'null')
           def api(route, method='GET', data=None, **kw):
-              args = ['api', route, '--method', method]
+              args = ['api', route, '--method', method, '--header', 'Cache-Control: no-cache']
               if data is not None: args += ['--input', '-']
               return gh(*args, data=data, **kw)
           runs = api(base + '/actions/runs?head_sha=' + source + '&per_page=100')['workflow_runs']
@@ -129,8 +129,12 @@ jobs:
                   api(route, 'PUT', body); break
               except RuntimeError:
                   if retry == 2: raise
-          check = api(route + '?ref=main')
-          assert base64.b64decode(check['content']) == (demo + '\n').encode()
+          for attempt in range(12):
+              check = api(route + '?ref=main')
+              if base64.b64decode(check['content']) == (demo + '\n').encode(): break
+              time.sleep(2)
+          else:
+              raise RuntimeError('Release download verified, but demo_link.txt readback is still stale. Rerun publication; no release is overwritten.')
           print('DEMO PUBLISHED AND PUBLIC DOWNLOAD VERIFIED')
           print('DEMO LINK: ' + demo)
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
