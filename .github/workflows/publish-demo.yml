@@ -1,0 +1,138 @@
+name: Publish PATCHWORK demo
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-demo.yml']
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact successfully built source commit'
+        required: true
+        default: 'd1ca4646b1166782d807e876415238ef63c0a940'
+      tag:
+        description: 'New demo version (never overwrites an existing version)'
+        required: true
+        default: 'chapter-06'
+permissions:
+  contents: read
+concurrency:
+  group: patchwork-demo-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish-chapter-06]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_SHA: ${{ inputs.source_sha || 'd1ca4646b1166782d807e876415238ef63c0a940' }}
+      DEMO_TAG: ${{ inputs.tag || 'chapter-06' }}
+    steps:
+      - name: Package a successful build and publish without replacing old versions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, io, json, os, pathlib, re, struct, subprocess, time, urllib.request, zipfile
+          repo = os.environ['GH_REPO']
+          source = os.environ['SOURCE_SHA']
+          tag = os.environ['DEMO_TAG']
+          assert repo == 'tomlemur57-ux/PATCHWORK-Game', 'Unexpected repository'
+          assert re.fullmatch(r'[0-9a-f]{40}', source), 'Use a full commit SHA'
+          assert re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,63}', tag), 'Unsafe tag'
+          base = '/repos/' + repo
+          def gh(*args, data=None, binary=False, optional=False):
+              result = subprocess.run(['gh', *args], input=None if data is None else json.dumps(data).encode(), capture_output=True)
+              if result.returncode:
+                  if optional and b'HTTP 404' in result.stderr: return None
+                  raise RuntimeError('GitHub CLI operation failed: ' + result.stderr.decode(errors='replace')[-1200:])
+              if binary: return result.stdout
+              return json.loads(result.stdout or b'null')
+          def api(route, method='GET', data=None, **kw):
+              args = ['api', route, '--method', method]
+              if data is not None: args += ['--input', '-']
+              return gh(*args, data=data, **kw)
+          runs = api(base + '/actions/runs?head_sha=' + source + '&per_page=100')['workflow_runs']
+          good = [r for r in runs if r['path'] == '.github/workflows/patchwork.yml' and r['head_sha'] == source and r['head_branch'] == 'main' and r['conclusion'] == 'success' and r['status'] == 'completed' and r['event'] in ('push', 'workflow_dispatch')]
+          assert good, 'No successful native build for this exact commit. Run PATCHWORK native build first.'
+          run = max(good, key=lambda r: r['id'])
+          artifacts = api(base + '/actions/runs/' + str(run['id']) + '/artifacts?per_page=100')['artifacts']
+          candidates = [a for a in artifacts if a['name'] == 'PATCHWORK-Windows' and not a['expired']]
+          assert len(candidates) == 1, 'Build artifact missing, expired or ambiguous'
+          artifact = candidates[0]
+          assert artifact.get('workflow_run', {}).get('head_sha') in (None, source)
+          archive = gh('api', base + '/actions/artifacts/' + str(artifact['id']) + '/zip', binary=True)
+          digest = hashlib.sha256(archive).hexdigest()
+          assert artifact.get('digest') == 'sha256:' + digest, 'Artifact SHA-256 mismatch'
+          with zipfile.ZipFile(io.BytesIO(archive)) as z:
+              assert sorted(z.namelist()) == ['BUILD-INFO.txt', 'PATCHWORK.exe'], 'Unexpected artifact contents'
+              assert all(i.file_size <= 16 * 1024 * 1024 for i in z.infolist())
+              exe, info = z.read('PATCHWORK.exe'), z.read('BUILD-INFO.txt')
+          assert exe[:2] == b'MZ' and len(exe) > 256
+          pe = struct.unpack_from('<I', exe, 60)[0]
+          assert pe + 6 <= len(exe) and exe[pe:pe+4] == b'PE\0\0' and struct.unpack_from('<H', exe, pe+4)[0] == 0x8664, 'Not a Windows x64 executable'
+          assert ('Commit: ' + source) in info.decode('utf-8'), 'Build-info commit mismatch'
+          demo = 'https://github.com/' + repo + '/releases/tag/' + tag
+          description = 'A Windows puzzle-platformer played across real desktop windows. Move the rooms, line up their doors, and guide a maintenance robot to its charging dock.'
+          readme = (description + '\n\nExtract this ZIP, then run PATCHWORK.exe. No compiler or tutorial server is required.\nA/D: move. Space: jump. Drag the title bars: connect rooms. R: restart. Esc: pause. Close a game window: quit.\n\nEarly Windows x64 prototype. Chapter 6 refactors the base game into modules. Later chapters are not included.\nBuild and package verification do not replace a Windows playtest. No developer playtest is claimed by this publisher.\n\nDemo: ' + demo + '\nSource commit: ' + source + '\n').encode()
+          files = {'PATCHWORK.exe': exe, 'BUILD-INFO.txt': info, 'README.txt': readme, 'demo_link.txt': (demo + '\n').encode()}
+          files['SHA256SUMS.txt'] = ''.join(hashlib.sha256(b).hexdigest() + '  ' + n + '\n' for n,b in sorted(files.items())).encode()
+          out = pathlib.Path('PATCHWORK-Windows.zip')
+          with zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+              for n,b in sorted(files.items()):
+                  entry = zipfile.ZipInfo(n, (2026, 1, 1, 0, 0, 0)); entry.compress_type = zipfile.ZIP_DEFLATED
+                  entry.external_attr = 0o100644 << 16; z.writestr(entry, b)
+          packed = out.read_bytes(); expected = hashlib.sha256(packed).hexdigest()
+          notes = (description + '\n\n**Windows x64 download, not browser gameplay.** Download `PATCHWORK-Windows.zip`, extract it and run `PATCHWORK.exe`.\n\n**Controls:** A/D move; Space jump; drag title bars to connect rooms; R restart; Esc pause; close a game window to quit.\n\n**This version:** Chapter 6 modular refactor of the two-room prototype. Shooting, dash, grappling and later levels are not implemented here.\n\n**Verification:** successful GitHub native build and byte-checked packaging. A Windows playtest and gameplay screenshots are still needed before the developer submits this version to Terra. No playtest or credited hours are claimed by this automation.\n\nSource: `' + source + '`. Build: ' + run['html_url'] + '.\nZIP SHA-256: `' + expected + '`.\n\nDeveloped using an AI-assisted tutorial. The room-title bug fix and release automation were supplied by an AI assistant.\n')
+          release = api(base + '/releases/tags/' + tag, optional=True)
+          if release is None:
+              drafts = [r for r in api(base + '/releases?per_page=100') if r['tag_name'] == tag and r['draft']]
+              assert len(drafts) <= 1, 'Ambiguous draft releases'
+              if drafts: release = drafts[0]
+          if release is None:
+              release = api(base + '/releases', 'POST', {'tag_name':tag, 'target_commitish':source, 'name':'PATCHWORK - ' + tag + ' demo', 'body':notes, 'draft':True, 'prerelease':True, 'make_latest':'false'})
+          assert release['target_commitish'] == source and release['tag_name'] == tag, 'Existing version belongs to different source; not overwritten'
+          assets = api(base + '/releases/' + str(release['id']) + '/assets?per_page=100')
+          found = [a for a in assets if a['name'] == out.name]
+          assert len(found) <= 1
+          if found:
+              assert found[0].get('digest') == 'sha256:' + expected and found[0]['size'] == len(packed), 'Existing asset differs; not overwritten'
+          else:
+              assert release['draft'], 'Do not modify an existing published version'
+              result = subprocess.run(['gh', 'release', 'upload', tag, str(out), '--repo', repo], capture_output=True)
+              assert result.returncode == 0, 'Asset upload failed; draft retained'
+          if release['draft']:
+              release = api(base + '/releases/' + str(release['id']), 'PATCH', {'draft':False, 'prerelease':True, 'make_latest':'false'})
+          download = 'https://github.com/' + repo + '/releases/download/' + tag + '/' + out.name
+          verified = False
+          for retry in range(6):
+              try:
+                  with urllib.request.urlopen(download, timeout=30) as response:
+                      public = response.read(32 * 1024 * 1024 + 1)
+                  verified = len(public) == len(packed) and hashlib.sha256(public).hexdigest() == expected
+                  if verified: break
+              except Exception:
+                  pass
+              time.sleep(5)
+          assert verified, 'Published asset not verified anonymously. demo_link.txt was NOT advanced.'
+          route = base + '/contents/demo_link.txt'
+          for retry in range(3):
+              old = api(route + '?ref=main', optional=True)
+              target = (demo + '\n').encode()
+              if old and base64.b64decode(old['content']) == target: break
+              body = {'message':'Point demo_link.txt to verified ' + tag + ' download [skip ci]', 'content':base64.b64encode(target).decode(), 'branch':'main'}
+              if old: body['sha'] = old['sha']
+              try:
+                  api(route, 'PUT', body); break
+              except RuntimeError:
+                  if retry == 2: raise
+          check = api(route + '?ref=main')
+          assert base64.b64decode(check['content']) == (demo + '\n').encode()
+          print('DEMO PUBLISHED AND PUBLIC DOWNLOAD VERIFIED')
+          print('DEMO LINK: ' + demo)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## Demo published\n\n' + demo + '\n\n`demo_link.txt` on main points to this verified public download.\n\nWindows gameplay has not been verified by this workflow.\n')
+          PY
