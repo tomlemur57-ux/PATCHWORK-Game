@@ -38,8 +38,8 @@ void pw_text(Drawing*d,float x, float y, int size, unsigned c, const char*s){
 void pw_render(const Game*g, int n, Drawing*d){
     const Room*r=&g->rooms[n];int i; d->count=0;
     pw_rect(d,0,0,PW_W,PW_H+PW_TITLE,0xe8e5d7);
-    pw_rect(d,16,15,14,0x254b52,r->name);
-    pw_text(d,16,55,12,0x254b52,"A/D move | Space jump | Shift dash | R restart | Esc pause");
+    pw_text(d,16,15,14,0x254b52,r->name);
+    pw_text(d,16,55,12,0x254b52,"A/D move | Space jump | R restart | Esc pause");
     for(i=0;i<r->nwalls;i++){Box b=r->walls[i];pw_rect(d,b.x,b.y+PW_TITLE,b.w,b.h,0x47676c);}
     for(i=0;i<2;i++)pw_rect(d,i?PW_W-7:0,201+PW_TITLE,7,65,pw_link(g,n,i?1:-1)>=0?0x199f96:0xaf7352);
     if(n==g->goal_room)pw_rect(d,g->goal_x-13,g->goal_y-20+PW_TITLE,26,40,g->won?0xe8bb39:0x199f96);
