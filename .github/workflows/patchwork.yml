@@ -1,0 +1,46 @@
+name: PATCHWORK native build
+on: [push, workflow_dispatch]
+permissions:
+  contents: read
+concurrency:
+  group: patchwork-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for your first game file
+        id: source
+        run: |
+          if [ -f source/native.c ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'No game source yet. Complete chapter 01; no build is claimed.'
+          fi
+      - name: Prepare hosted build tools
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+      - name: Build this commit
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          python3 tools/build_portable.py
+          printf 'Commit: %s\nWindows x64 native reference; runtime not tested by this job.\n' "$GITHUB_SHA" > BUILD-INFO.txt
+      - name: Test the simulation when available
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          if [ -f tools/test_core.py ]; then
+            python3 tools/test_core.py
+          fi
+      - uses: actions/upload-artifact@v4
+        if: steps.source.outputs.ready == 'true'
+        with:
+          name: PATCHWORK-Windows
+          path: |
+            PATCHWORK.exe
+            BUILD-INFO.txt
+          if-no-files-found: error
+          retention-days: 7
