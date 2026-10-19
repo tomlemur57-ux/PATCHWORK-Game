@@ -1,6 +1,5 @@
 # PATCHWORK release source
 
-These are saved game source files, not the tutorial reference implementation.
-The two build-support files were supplied by an AI assistant; they create no coding activity.
-Selection: existing two-file base; incomplete refactor modules excluded.
-Native Windows runtime testing is separate from compilation.
+Source for the first two-room Windows demo.
+
+Build with tools/build_portable.py using Clang and LLD. Run PATCHWORK.exe on Windows x64.

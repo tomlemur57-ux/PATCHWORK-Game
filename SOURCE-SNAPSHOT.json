@@ -1,7 +1,7 @@
 {
   "format": "patchwork-ship-20261016-1",
   "sourceGitHead": "c688e13f4bc6f1d0395acc243c92e4533138873d",
-  "selection": "existing two-file base; incomplete refactor modules excluded",
+  "selection": "first two-room prototype",
   "files": [
     {
       "name": "source/native.c",
