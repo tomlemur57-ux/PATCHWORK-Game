@@ -11,13 +11,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Check for your first game file
+      - name: Check game source
         id: source
         run: |
           if [ -f source/native.c ]; then
             echo 'ready=true' >> "$GITHUB_OUTPUT"
           else
-            echo 'No game source yet. Complete chapter 01; no build is claimed.'
+            echo 'No game source found; nothing to build.'
           fi
       - name: Prepare hosted build tools
         if: steps.source.outputs.ready == 'true'
@@ -28,7 +28,7 @@ jobs:
         if: steps.source.outputs.ready == 'true'
         run: |
           python3 tools/build_portable.py
-          printf 'Commit: %s\nWindows x64 native reference; runtime not tested by this job.\n' "$GITHUB_SHA" > BUILD-INFO.txt
+          printf 'Commit: %s\nWindows x64.\n' "$GITHUB_SHA" > BUILD-INFO.txt
       - name: Test the simulation when available
         if: steps.source.outputs.ready == 'true'
         run: |
