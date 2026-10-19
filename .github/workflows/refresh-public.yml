@@ -1,0 +1,40 @@
+name: Refresh public descriptions
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/refresh-public.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  descriptions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Update current and earlier demo descriptions
+        shell: bash
+        run: |
+          cat > current-notes.txt <<'TEXT'
+          Move real desktop windows to connect their doors and guide a maintenance robot to its charging dock.
+
+          **Windows x64.** Download `PATCHWORK-Windows.zip`, extract it and run `PATCHWORK.exe`.
+
+          **Controls:** A/D move; Space jump; drag the title bars to connect rooms; R restart; Esc pause; close a game window to quit.
+
+          Early two-room prototype.
+          TEXT
+          cat > earlier-notes.txt <<'TEXT'
+          A small Windows puzzle game where moving the windows connects the rooms. Guide the robot to its charging dock.
+
+          **Windows x64.** Download `PATCHWORK-Windows.zip`, extract it and run `PATCHWORK.exe`.
+
+          **Controls:** A/D move; Space jump; drag the title bars to connect rooms; R restart; close a game window to quit.
+
+          First two-room prototype.
+          TEXT
+          gh api repos/tomlemur57-ux/PATCHWORK-Game/releases/416693554 --method PATCH -f name='PATCHWORK v0.2.0 - Windows demo' -F body=@current-notes.txt --silent
+          gh api repos/tomlemur57-ux/PATCHWORK-Game/releases/415284121 --method PATCH -f name='PATCHWORK - First Windows demo' -F body=@earlier-notes.txt --silent
+          echo 'The two release descriptions have been updated.'
