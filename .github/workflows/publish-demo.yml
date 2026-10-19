@@ -1,130 +1,74 @@
-name: PATCHWORK editor tools
-run-name: PATCHWORK ${{ inputs.operation }} ${{ inputs.request_id }}
+name: PATCHWORK editor build
+run-name: PATCHWORK ${{ inputs.operation || 'preview' }} ${{ inputs.request_id || 'repository-check' }}
 on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-demo.yml, tools/demo_package.py]
   workflow_dispatch:
     inputs:
       operation:
-        description: Task
+        description: Build action
         type: choice
-        options: [workspace, demo]
-        default: demo
+        options: [preview, demo]
+        default: preview
         required: true
       source_sha:
-        description: Exact source commit, or leave empty for main
+        description: Exact saved source commit
         required: false
       request_id:
         description: Request identifier
         required: true
       version:
-        description: New demo version
-        required: false
+        description: Demo version
+        required: true
 permissions:
   contents: read
+concurrency:
+  group: patchwork-editor-publication
+  cancel-in-progress: false
 jobs:
-  task:
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      OPERATION: ${{ inputs.operation }}
-      REQUEST_ID: ${{ inputs.request_id }}
-      DEMO_VERSION: ${{ inputs.version }}
+      OPERATION: ${{ inputs.operation || 'preview' }}
+      REQUEST_ID: ${{ inputs.request_id || 'repository-check' }}
+      DEMO_VERSION: ${{ inputs.version || 'v0.0.0' }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_sha || 'main' }}
-          fetch-depth: 0
+          ref: ${{ inputs.source_sha || github.sha }}
           persist-credentials: false
-      - name: Validate request
-        shell: bash
+      - name: Validate build request
         run: |
           python3 - <<'PY'
           import os,re
           assert os.environ['GH_REPO']=='tomlemur57-ux/PATCHWORK-Game'
-          assert os.environ['OPERATION'] in ('workspace','demo')
+          assert os.environ['OPERATION'] in ('preview','demo')
           assert re.fullmatch(r'[a-zA-Z0-9-]{1,64}',os.environ['REQUEST_ID'])
-          if os.environ['OPERATION']=='demo':
-              assert re.fullmatch(r'(?:v[0-9]+\.[0-9]+\.[0-9]+|demo-[0-9]{8}-[0-9]{6}-[a-f0-9]{6})',os.environ['DEMO_VERSION'])
+          assert re.fullmatch(r'(?:v[0-9]+\.[0-9]+\.[0-9]+|demo-[0-9]{8}-[0-9]{6}-[a-f0-9]{6})',os.environ['DEMO_VERSION'])
+          assert not os.environ['SOURCE_SHA'] or re.fullmatch(r'[a-f0-9]{40}',os.environ['SOURCE_SHA'])
           PY
-      - name: Prepare workspace transfer
-        if: inputs.operation == 'workspace'
-        run: |
-          mkdir -p transfer
-          git bundle create transfer/workspace.bundle HEAD
-          python3 - <<'PY'
-          import hashlib,json,pathlib,subprocess
-          p=pathlib.Path('transfer/workspace.bundle')
-          sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-          pathlib.Path('transfer/manifest.json').write_text(json.dumps({'repository':'tomlemur57-ux/PATCHWORK-Game','commit':sha,'bundleSha256':hashlib.sha256(p.read_bytes()).hexdigest(),'ref':'HEAD'}))
-          PY
-      - uses: actions/upload-artifact@v4
-        if: inputs.operation == 'workspace'
-        with:
-          name: PATCHWORK-Workspace
-          path: transfer/*
-          if-no-files-found: error
-          retention-days: 2
+      - name: Check public copy
+        run: python3 tools/demo_package.py --audit
       - name: Prepare compiler
-        if: inputs.operation == 'demo'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang lld
-      - name: Build saved source
-        if: inputs.operation == 'demo'
+      - name: Build the exact saved source
         run: |
           python3 tools/build_portable.py
           if [ -f tools/test_core.py ]; then python3 tools/test_core.py; fi
-      - name: Package and publish demo
-        if: inputs.operation == 'demo'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import base64,hashlib,json,os,pathlib,struct,subprocess,time,urllib.request,zipfile
-          repo=os.environ['GH_REPO'];tag=os.environ['DEMO_VERSION']
-          source=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-          url='https://github.com/'+repo+'/releases/tag/'+tag
-          exe=pathlib.Path('PATCHWORK.exe').read_bytes()
-          assert exe[:2]==b'MZ' and len(exe)>256
-          pe=struct.unpack_from('<I',exe,60)[0]
-          assert pe+6<len(exe) and exe[pe:pe+4]==b'PE\0\0' and struct.unpack_from('<H',exe,pe+4)[0]==0x8664
-          def sha(b):return hashlib.sha256(b).hexdigest()
-          manifest={p.as_posix():sha(p.read_bytes()) for p in sorted(pathlib.Path('source').rglob('*')) if p.is_file()}
-          files={'PATCHWORK.exe':exe,'BUILD-INFO.txt':('Commit: '+source+'\nWindows x64.\n').encode(),'SOURCE-SHA256.json':json.dumps(manifest,indent=2).encode(),'demo_link.txt':(url+'\n').encode(),'README.txt':('PATCHWORK\n\nMove desktop windows to connect their rooms and guide the robot to its dock.\n\nWindows x64. Extract all files and open PATCHWORK.exe. Use the controls shown in the game.\n\n'+url+'\n').encode()}
-          for name in ('LICENSE','LICENSE.txt','LICENSE.md','COPYING','NOTICE'):
-              p=pathlib.Path(name)
-              if p.is_file():files[name]=p.read_bytes()
-          files['SHA256SUMS.txt']=''.join(sha(b)+'  '+n+'\n' for n,b in sorted(files.items())).encode()
-          pathlib.Path('dist').mkdir(exist_ok=True)
-          out=pathlib.Path('dist/PATCHWORK-Windows.zip')
-          with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
-              for n,b in sorted(files.items()):
-                  i=zipfile.ZipInfo(n,(2026,1,1,0,0,0));i.compress_type=zipfile.ZIP_DEFLATED;i.external_attr=0o100644<<16;z.writestr(i,b)
-          expected=sha(out.read_bytes())
-          notes='Move desktop windows to connect their rooms and guide the robot to its dock.\n\n**Windows x64.** Download `PATCHWORK-Windows.zip`, extract it and run `PATCHWORK.exe`. Use the controls shown in the game.\n\nEarly prototype.\n\nZIP SHA-256: `'+expected+'`.\n'
-          pathlib.Path('dist/notes.md').write_text(notes)
-          subprocess.run(['gh','release','create',tag,str(out),'--repo',repo,'--target',source,'--title','PATCHWORK '+tag+' - Windows demo','--notes-file','dist/notes.md','--prerelease'],check=True)
-          verified=False
-          for retry in range(8):
-              try:
-                  with urllib.request.urlopen('https://github.com/'+repo+'/releases/download/'+tag+'/PATCHWORK-Windows.zip',timeout=30) as r:b=r.read(32*1024*1024+1)
-                  verified=sha(b)==expected
-                  if verified:break
-              except Exception:pass
-              time.sleep(3)
-          assert verified,'Public download verification failed; demo pointer was not advanced.'
-          route='repos/'+repo+'/contents/demo_link.txt'
-          old=json.loads(subprocess.check_output(['gh','api',route+'?ref=main']))
-          body={'message':'Update current demo URL [skip ci]','branch':'main','sha':old['sha'],'content':base64.b64encode((url+'\n').encode()).decode()}
-          subprocess.run(['gh','api',route,'-X','PUT','--input','-'],input=json.dumps(body).encode(),check=True,stdout=subprocess.DEVNULL)
-          pathlib.Path('dist/demo-result.json').write_text(json.dumps({'commit':source,'url':url,'zipSha256':expected,'published':True,'gameplayTested':False}))
-          print('DEMO DOWNLOAD VERIFIED: '+url)
-          PY
+      - name: Package and verify
+        run: python3 tools/demo_package.py --operation "$OPERATION" --version "$DEMO_VERSION"
       - uses: actions/upload-artifact@v4
-        if: inputs.operation == 'demo' && success()
         with:
           name: PATCHWORK-Demo
           path: dist/*
+          if-no-files-found: error
           retention-days: 7
