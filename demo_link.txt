@@ -1,1 +1,1 @@
-https://github.com/tomlemur57-ux/PATCHWORK-Game/releases/tag/chapter-06
+https://github.com/tomlemur57-ux/PATCHWORK-Game/releases/tag/v0.2.0
