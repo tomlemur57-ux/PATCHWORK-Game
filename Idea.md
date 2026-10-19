@@ -16,8 +16,6 @@ The desktop is the space between the rooms. The game controls only its own windo
 
 [Windowkill][1] makes moving, shrinking windows part of a shooter. [Windowframe][2] makes window boundaries part of its platforming rules. Borrow the idea that the application window can be a game object, not their levels, art, combat, or code.
 
-The Game name is ai generated tho, not the game(ai assisted mostly)
-
 ## Rules worth keeping consistent
 
 - **Rooms have fixed dimensions initially.** Rearranging them changes their connections, not their internal geometry. Resizing is not a first-release mechanic.(but i will somehow add resizing of windows later with some mechanic)
