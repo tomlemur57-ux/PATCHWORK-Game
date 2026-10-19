@@ -17,53 +17,63 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
-      - name: Refresh the two existing archives while preserving each executable
+      - name: Finish versioned demo links
         shell: bash
         run: |
           python3 - <<'PY'
-          import base64,hashlib,io,json,pathlib,subprocess,zipfile
-          REPO='tomlemur57-ux/PATCHWORK-Game'
-          BASE='repos/'+REPO
-          def api(route,method='GET',body=None,binary=False):
-              args=['gh','api',route,'--method',method]
-              if body is not None: args+=['--input','-']
-              if binary: args+=['-H','Accept: application/octet-stream']
-              r=subprocess.run(args,input=json.dumps(body).encode() if body is not None else None,capture_output=True,check=True)
-              return r.stdout if binary else json.loads(r.stdout or b'null')
-          def digest(b):return hashlib.sha256(b).hexdigest()
-          def refresh(rid,version,controls):
-              r=api(BASE+'/releases/'+str(rid));oldtag=r['tag_name'];source=r['target_commitish']
-              assert not r['immutable']
-              assets=api(BASE+'/releases/'+str(rid)+'/assets');items=[a for a in assets if a['name']=='PATCHWORK-Windows.zip']
-              assert len(items)==1
-              raw=api(BASE+'/releases/assets/'+str(items[0]['id']),binary=True)
-              assert digest(raw)==items[0]['digest'].split(':',1)[1]
-              with zipfile.ZipFile(io.BytesIO(raw)) as z:
-                  assert len(z.namelist())==len(set(z.namelist())) and all(i.file_size<16*1024*1024 for i in z.infolist())
-                  exe=z.read('PATCHWORK.exe');licenses={n:z.read(n) for n in z.namelist() if n.upper().startswith(('LICENSE','COPYING','NOTICE'))}
-              assert exe[:2]==b'MZ'
-              tag=version or oldtag
-              url='https://github.com/'+REPO+'/releases/tag/'+tag
-              readme='PATCHWORK\n\nMove real desktop windows to connect their doors and guide a robot to its charging dock.\n\nWindows x64. Extract the ZIP and run PATCHWORK.exe.\n\nControls: '+controls+'\n\nEarly two-room prototype.\n'+url+'\n'
-              files={**licenses,'PATCHWORK.exe':exe,'BUILD-INFO.txt':('Commit: '+source+'\nWindows x64.\n').encode(),'README.txt':readme.encode(),'demo_link.txt':(url+'\n').encode()}
-              files['SHA256SUMS.txt']=''.join(digest(v)+'  '+n+'\n' for n,v in sorted(files.items())).encode()
-              out=pathlib.Path('PATCHWORK-Windows.zip')
-              with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
-                  for n,b in sorted(files.items()):
-                      i=zipfile.ZipInfo(n,(2026,1,1,0,0,0));i.compress_type=zipfile.ZIP_DEFLATED;i.external_attr=0o100644<<16;z.writestr(i,b)
-              with zipfile.ZipFile(out) as z:assert z.read('PATCHWORK.exe')==exe
-              subprocess.run(['gh','release','upload',oldtag,str(out),'--repo',REPO,'--clobber'],check=True)
-              fresh=api(BASE+'/releases/'+str(rid)+'/assets');asset=next(a for a in fresh if a['name']==out.name)
-              downloaded=api(BASE+'/releases/assets/'+str(asset['id']),binary=True)
-              assert digest(downloaded)==digest(out.read_bytes())
-              if version and oldtag!=tag:
-                  subprocess.run(['gh','release','edit',oldtag,'--repo',REPO,'--tag',tag,'--target',source],check=True)
-              updated=api(BASE+'/releases/'+str(rid));assert updated['tag_name']==tag
-              print(json.dumps({'release':tag,'executableUnchanged':True,'zipSha256':digest(downloaded)}))
-              return url
-          controls='A/D move; Space jump; drag title bars to connect rooms; R restart; '
-          refresh(415284121,None,controls+'close a window to quit.')
-          url=refresh(416693554,'v0.2.0',controls+'Esc pause; close a window to quit.')
-          row=api(BASE+'/contents/demo_link.txt?ref=main');target=(url+'\n').encode()
-          if base64.b64decode(row['content'])!=target:api(BASE+'/contents/demo_link.txt','PUT',{'message':'Update demo URL [skip ci]','branch':'main','sha':row['sha'],'content':base64.b64encode(target).decode()})
+          import base64,hashlib,io,json,subprocess,time,urllib.request,zipfile
+          R='tomlemur57-ux/PATCHWORK-Game';B='repos/'+R
+          assert __import__('os').environ['GH_REPO']==R
+          def api(route,method='GET',body=None,optional=False):
+              a=['gh','api',route,'--method',method,'-H','Cache-Control: no-cache']
+              if body is not None:a+=['--input','-']
+              p=subprocess.run(a,input=None if body is None else json.dumps(body).encode(),capture_output=True)
+              if p.returncode:
+                  if optional and b'HTTP 404' in p.stderr:return None
+                  raise RuntimeError(p.stderr.decode(errors='replace')[-1200:])
+              return json.loads(p.stdout or b'null')
+          rid=416693554;tag='v0.2.0';release=api(B+'/releases/'+str(rid));old=release['tag_name']
+          built='d1ca4646b1166782d807e876415238ef63c0a940'
+          main=api(B+'/git/ref/heads/main')['object']['sha']
+          def source_tree(commit):
+              tree=api(B+'/git/commits/'+commit)['tree']['sha']
+              data=api(B+'/git/trees/'+tree+'?recursive=1');assert not data['truncated']
+              return {e['path']:(e['mode'],e['sha']) for e in data['tree'] if e['type']!='tree' and (e['path'].startswith('source/') or e['path']=='tools/build_portable.py')}
+          assert source_tree(main)==source_tree(built),'Game source changed; do not retag a different build.'
+          if old!=tag:
+              assert api(B+'/releases/tags/'+tag,optional=True) is None,'Version already used by a different release.'
+              existing=api(B+'/git/ref/tags/'+tag,optional=True)
+              if existing:
+                  assert existing['object']['type']=='commit' and source_tree(existing['object']['sha'])==source_tree(built)
+              release=api(B+'/releases/'+str(rid),'PATCH',{'tag_name':tag,'target_commitish':main,'name':'PATCHWORK v0.2.0 - Windows demo'})
+          assert release['tag_name']==tag
+          url='https://github.com/'+R+'/releases/tag/'+tag
+          asset=next(a for a in api(B+'/releases/'+str(rid)+'/assets') if a['name']=='PATCHWORK-Windows.zip')
+          download='https://github.com/'+R+'/releases/download/'+tag+'/PATCHWORK-Windows.zip'
+          for attempt in range(10):
+              try:
+                  with urllib.request.urlopen(download,timeout=30) as response:data=response.read(32*1024*1024+1)
+                  assert hashlib.sha256(data).hexdigest()==asset['digest'].split(':',1)[1]
+                  with zipfile.ZipFile(io.BytesIO(data)) as z:
+                      assert z.read('demo_link.txt').decode().strip()==url
+                      assert z.read('PATCHWORK.exe')[:2]==b'MZ'
+                  break
+              except Exception:
+                  if attempt==9:raise
+                  time.sleep(3)
+          route=B+'/contents/demo_link.txt';wanted=(url+'\n').encode()
+          for attempt in range(5):
+              current=api(route+'?ref=main')
+              if base64.b64decode(current['content'])==wanted:break
+              try:api(route,'PUT',{'message':'Update current demo URL [skip ci]','branch':'main','sha':current['sha'],'content':base64.b64encode(wanted).decode()})
+              except RuntimeError:
+                  if attempt==4:raise
+              time.sleep(2)
+          assert base64.b64decode(api(route+'?ref=main')['content'])==wanted
+          if old!=tag:
+              ref=api(B+'/git/ref/tags/'+old,optional=True)
+              if ref is not None:
+                  assert ref['object']['type']=='commit' and ref['object']['sha']==built,'Unexpected previous version target.'
+                  api(B+'/git/refs/tags/'+old,'DELETE')
+          print('Public version and ZIP verified: '+url)
           PY
