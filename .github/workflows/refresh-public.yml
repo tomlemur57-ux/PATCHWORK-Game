@@ -1,4 +1,4 @@
-name: Check archived demo metadata
+name: Verify public demo metadata
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ concurrency:
   group: patchwork-editor-publication
   cancel-in-progress: false
 jobs:
-  metadata:
+  verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     env:
@@ -20,62 +20,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Check current files and the existing version packages
+      - name: Verify unchanged source and current version metadata
         run: |
           python3 - <<'PY'
           import base64,hashlib,io,json,pathlib,subprocess,sys,zipfile
           sys.path.insert(0,'tools')
           from demo_package import api,check_text,audit
-          cache={}
-          def blob(sha):
-              if sha not in cache:cache[sha]=base64.b64decode(api('/git/blobs/'+sha)['content'])
-              return cache[sha]
-          def entries(commit):
-              c=api('/git/commits/'+commit);t=api('/git/trees/'+c['tree']['sha']+'?recursive=1')
-              assert not t['truncated']
-              return c['tree']['sha'],{e['path']:e for e in t['tree'] if e['type']=='blob'}
-          builder=pathlib.Path('tools/build_portable.py').read_text()
+          repo='tomlemur57-ux/PATCHWORK-Game'
+          assert __import__('os').environ['GH_REPO']==repo
+          def tree(commit):
+              data=api('/git/trees/'+commit+'?recursive=1')
+              assert not data['truncated']
+              return {r['path']:r for r in data['tree'] if r['type']=='blob'}
+          def source(files):return {p:(r['mode'],r['sha']) for p,r in files.items() if p.startswith('source/')}
+          main=api('/git/ref/heads/main')['object']['sha']
+          current=api('/git/ref/tags/v0.2.0')['object']['sha']
+          newfiles=tree(main)
+          assert source(newfiles)==source(tree(current)),'Game source differs; version metadata left unchanged.'
+          audit(pathlib.Path.cwd())
+          if current!=main:
+              api('/git/refs/tags/v0.2.0','PATCH',{'sha':main,'force':False})
+              api('/releases/416693554','PATCH',{'target_commitish':main})
           results=[]
           for rid in (415284121,416693554):
-              release=api('/releases/'+str(rid));tag=release['tag_name'];ref=api('/git/ref/tags/'+tag)
-              assert ref['object']['type']=='commit'
-              old=ref['object']['sha'];tree,files=entries(old);changes=[]
-              replacements={'tools/build_portable.py':builder,'demo_link.txt':release['html_url']+'\n'}
-              if 'RELEASE-SOURCE.md' in files:
-                  replacements['RELEASE-SOURCE.md']='# PATCHWORK release source\n\nSource for the first two-room Windows demo.\n\nBuild with tools/build_portable.py using Clang and LLD. Run PATCHWORK.exe on Windows x64.\n'
-              if 'SOURCE-SNAPSHOT.json' in files:
-                  manifest=json.loads(blob(files['SOURCE-SNAPSHOT.json']['sha']));manifest['selection']='first two-room prototype'
-                  replacements['SOURCE-SNAPSHOT.json']=json.dumps(manifest,indent=2)+'\n'
-              for name,text in replacements.items():
-                  assert not name.startswith('source/')
-                  if name in files and blob(files[name]['sha'])==text.encode():continue
-                  changes.append({'path':name,'mode':'100644','type':'blob','content':text})
-              new=old
-              if changes:
-                  newtree=api('/git/trees','POST',{'base_tree':tree,'tree':changes})['sha']
-                  new=api('/git/commits','POST',{'message':'Refresh Windows release metadata [skip ci]','tree':newtree,'parents':[old]})['sha']
-              _,updated=entries(new)
-              assert {p:e['sha'] for p,e in files.items() if p.startswith('source/')}=={p:e['sha'] for p,e in updated.items() if p.startswith('source/')}
-              for name,e in updated.items():
-                  if pathlib.Path(name).suffix.lower() in ('.md','.txt','.c','.h','.py','.yml','.json'):
-                      check_text(blob(e['sha']).decode('utf-8'),name)
+              release=api('/releases/'+str(rid))
               check_text(release['name']+'\n'+release['body'],'release description')
-              if new!=old:
-                  assert api('/git/ref/tags/'+tag)['object']['sha']==old
-                  api('/git/refs/tags/'+tag,'PATCH',{'sha':new,'force':False})
-                  api('/releases/'+str(rid),'PATCH',{'target_commitish':new})
-                  if rid==415284121:
-                      branch='/git/ref/heads/demo-build/'+tag
-                      if api(branch)['object']['sha']==old:api('/git/refs/heads/demo-build/'+tag,'PATCH',{'sha':new,'force':False})
-              assert api('/git/ref/tags/'+tag)['object']['sha']==new
-              asset=next(a for a in release['assets'] if a['name']=='PATCHWORK-Windows.zip')
-              raw=subprocess.check_output(['gh','api','repos/'+__import__('os').environ['GH_REPO']+'/releases/assets/'+str(asset['id']),'-H','Accept: application/octet-stream'])
+              ref=api('/git/ref/tags/'+release['tag_name'])['object']['sha']
+              files=tree(ref)
+              for name,row in files.items():
+                  if pathlib.Path(name).suffix.lower() in ('.txt','.md','.c','.h','.py','.yml','.yaml','.json'):
+                      data=base64.b64decode(api('/git/blobs/'+row['sha'])['content'])
+                      check_text(data.decode('utf-8'),name)
+              asset=next(x for x in release['assets'] if x['name']=='PATCHWORK-Windows.zip')
+              raw=subprocess.check_output(['gh','api','repos/'+repo+'/releases/assets/'+str(asset['id']),'-H','Accept: application/octet-stream'])
               assert hashlib.sha256(raw).hexdigest()==asset['digest'].split(':',1)[1]
               with zipfile.ZipFile(io.BytesIO(raw)) as z:
                   assert z.read('demo_link.txt').decode().strip()==release['html_url']
                   for name in z.namelist():
-                      if pathlib.Path(name).suffix.lower() in ('.md','.txt','.json'):check_text(z.read(name).decode('utf-8'),name)
-                  exe=hashlib.sha256(z.read('PATCHWORK.exe')).hexdigest()
-              results.append({'version':tag,'metadataCommit':new,'sourceUnchanged':True,'zipUnchanged':True,'executableSha256':exe})
-          print(json.dumps({'versions':results,'mainTextFilesChecked':len(audit(pathlib.Path.cwd()))},indent=2))
+                      if pathlib.Path(name).suffix.lower() in ('.txt','.md','.json'):check_text(z.read(name).decode('utf-8'),name)
+                  executable=hashlib.sha256(z.read('PATCHWORK.exe')).hexdigest()
+              results.append({'version':release['tag_name'],'sourceFiles':len(source(files)),'zipUnchanged':True,'executableSha256':executable})
+          print(json.dumps({'publicVersionsVerified':results},indent=2))
           PY
