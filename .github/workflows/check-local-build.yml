@@ -17,26 +17,29 @@ jobs:
       - name: Check the portable compiler archive
         shell: pwsh
         run: |
-          $url='https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip'
           $zip=Join-Path $env:RUNNER_TEMP 'zig.zip'
-          Invoke-WebRequest -Uri $url -OutFile $zip
+          Invoke-WebRequest -Uri 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $zip
           if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') {throw 'Compiler checksum mismatch'}
           Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'compiler')
-      - name: Compile current saved game without an SDK or local installer
-        shell: pwsh
-        run: |
-          $zig=Join-Path $env:RUNNER_TEMP 'compiler/zig-x86_64-windows-0.14.1/zig.exe'
-          $files=@(Get-ChildItem source -Filter *.c | Sort-Object Name | ForEach-Object FullName)
-          $args=@('cc','-target','x86_64-windows-gnu','-std=c99','-O2','-ffreestanding','-fno-stack-protector','-mno-stack-arg-probe','-Wall','-Wextra','-Werror','-Wno-unused-function','-nostdlib')+$files+@('-lkernel32','-luser32','-lgdi32','-lwinmm','-lcomdlg32','-lmsvcrt','-Wl,--entry=mainCRTStartup','-Wl,--subsystem,windows','-Wl,--stack,8388608','-Wl,--dynamicbase','-Wl,--nxcompat','-o','PATCHWORK.exe')
-          & $zig @args
-          if ($LASTEXITCODE -ne 0) {throw 'Portable build failed'}
-          Get-FileHash PATCHWORK.exe -Algorithm SHA256
-      - name: Inspect executable format
+      - name: Compile saved game using explicit Windows imports
         shell: python
         run: |
-          import pathlib,struct
-          b=pathlib.Path('PATCHWORK.exe').read_bytes()
-          assert b[:2]==b'MZ'
-          p=struct.unpack_from('<I',b,60)[0]
-          assert b[p:p+4]==b'PE\0\0' and struct.unpack_from('<H',b,p+4)[0]==0x8664
-          print('Windows x64 executable verified. No gameplay test claimed.')
+          import ast,os,pathlib,subprocess,struct,hashlib
+          root=pathlib.Path.cwd()
+          zig=pathlib.Path(os.environ['RUNNER_TEMP'])/'compiler/zig-x86_64-windows-0.14.1/zig.exe'
+          parsed=ast.parse((root/'tools/build_portable.py').read_text())
+          imports=next(ast.literal_eval(n.value) for n in parsed.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='imports' for t in n.targets))
+          out=root/'portable-test';out.mkdir()
+          libs=[]
+          for name,symbols in imports.items():
+              definition=out/(name+'.def');library=out/(name+'.lib')
+              definition.write_text('LIBRARY '+name+'.dll\nEXPORTS\n'+'\n'.join(symbols)+'\n')
+              subprocess.run([str(zig),'dlltool','-m','i386:x86-64','-d',str(definition),'-l',str(library),'-D',name+'.dll'],check=True)
+              libs.append(str(library))
+          sources=[str(p) for p in sorted((root/'source').glob('*.c'))]
+          args=['cc','-target','x86_64-windows-gnu','-std=c99','-O2','-ffreestanding','-fno-stack-protector','-mno-stack-arg-probe','-Wall','-Wextra','-Werror','-Wno-unused-function','-nostdlib']+sources+libs+['-Wl,--entry=mainCRTStartup','-Wl,--subsystem,windows','-Wl,--stack,8388608','-Wl,--dynamicbase','-Wl,--nxcompat','-o',str(out/'PATCHWORK.exe')]
+          subprocess.run([str(zig)]+args,check=True)
+          data=(out/'PATCHWORK.exe').read_bytes();offset=struct.unpack_from('<I',data,60)[0]
+          assert data[:2]==b'MZ' and data[offset:offset+4]==b'PE\0\0' and struct.unpack_from('<H',data,offset+4)[0]==0x8664
+          print('WINDOWS_PORTABLE_BUILD_VERIFIED',hashlib.sha256(data).hexdigest())
+          print('No gameplay test claimed.')
