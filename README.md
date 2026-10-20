@@ -1,5 +1,2 @@
 # PATCHWORK Game
-
-Windows game about connecting rooms by actually moving the Windows windows
-
-I actually don't know what to write here
+Move real desktop windows, connect their doors and guide a robot to its charging dock.
