@@ -1,4 +1,4 @@
-name: Refresh archived version metadata
+name: Check archived demo metadata
 on:
   push:
     branches: [main]
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Refresh and audit the existing versions
+      - name: Check current files and the existing version packages
         run: |
           python3 - <<'PY'
           import base64,hashlib,io,json,pathlib,subprocess,sys,zipfile
@@ -40,7 +40,7 @@ jobs:
               release=api('/releases/'+str(rid));tag=release['tag_name'];ref=api('/git/ref/tags/'+tag)
               assert ref['object']['type']=='commit'
               old=ref['object']['sha'];tree,files=entries(old);changes=[]
-              replacements={'tools/build_portable.py':builder}
+              replacements={'tools/build_portable.py':builder,'demo_link.txt':release['html_url']+'\n'}
               if 'RELEASE-SOURCE.md' in files:
                   replacements['RELEASE-SOURCE.md']='# PATCHWORK release source\n\nSource for the first two-room Windows demo.\n\nBuild with tools/build_portable.py using Clang and LLD. Run PATCHWORK.exe on Windows x64.\n'
               if 'SOURCE-SNAPSHOT.json' in files:
